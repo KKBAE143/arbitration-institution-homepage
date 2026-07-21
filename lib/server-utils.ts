@@ -2,12 +2,14 @@ import { createHash, randomBytes } from "node:crypto"
 
 export const MAX_FILE_BYTES = 15 * 1024 * 1024
 
-const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/
+const BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/
+const MAX_BASE64_LENGTH = Math.ceil(MAX_FILE_BYTES / 3) * 4
 
 export function parseBase64(contentBase64: string) {
   const separator = contentBase64.indexOf(",")
   const data = (separator >= 0 ? contentBase64.slice(separator + 1) : contentBase64).replace(/\s/g, "")
-  if (!data || !BASE64_PATTERN.test(data)) throw new Error("File content is not valid Base64")
+  if (data.length > MAX_BASE64_LENGTH) throw new Error("File exceeds the 15 MB limit")
+  if (!data || data.length % 4 !== 0 || !BASE64_PATTERN.test(data)) throw new Error("File content is not valid Base64")
   const buffer = Buffer.from(data, "base64")
   if (buffer.byteLength > MAX_FILE_BYTES) throw new Error("File exceeds the 15 MB limit")
   return { data, buffer }
