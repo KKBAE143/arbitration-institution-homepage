@@ -1,0 +1,2 @@
+import { prisma } from "@/lib/prisma"
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const {id}=await params;const resource=await prisma.resource.findFirst({where:{id,isPublished:true}});if(!resource)return new Response("Not found",{status:404});return new Response(Buffer.from(resource.contentBase64,"base64"),{headers:{"content-type":resource.mimeType,"content-disposition":`attachment; filename="${resource.fileName.replaceAll('"','')}"`}})}

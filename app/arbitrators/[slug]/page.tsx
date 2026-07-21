@@ -1,0 +1,5 @@
+import { notFound } from "next/navigation"
+import { prisma } from "@/lib/prisma"
+import { PublicHero, PublicShell } from "@/components/public/public-shell"
+import { Badge } from "@/components/ui/badge"
+export default async function ProfilePage({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const profile=await prisma.arbitratorProfile.findFirst({where:{slug,empanelmentStatus:"APPROVED"},include:{user:{select:{name:true}},specializations:true}}).catch(()=>null);if(!profile)notFound();return <PublicShell><PublicHero eyebrow="Panel member" title={`${profile.title??""} ${profile.user.name}`.trim()} description="Approved arbitrator profile"/><section className="mx-auto max-w-4xl px-4 py-16 md:px-8"><div className="flex flex-wrap gap-2">{profile.specializations.map(s=><Badge key={s.id}>{s.specialization.replaceAll("_"," ")}</Badge>)}</div><p className="mt-8 whitespace-pre-line text-lg leading-relaxed text-muted-foreground">{profile.bio}</p>{profile.externalProfileUrl&&<a href={profile.externalProfileUrl} className="mt-8 inline-block font-medium text-accent-foreground">View professional profile</a>}</section></PublicShell>}

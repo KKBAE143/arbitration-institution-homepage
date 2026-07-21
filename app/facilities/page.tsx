@@ -1,0 +1,6 @@
+import Link from "next/link"
+import { prisma } from "@/lib/prisma"
+import { PublicHero, PublicShell } from "@/components/public/public-shell"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+export default async function FacilitiesPage(){const facilities=await prisma.facility.findMany({where:{isActive:true}}).catch(()=>[]);return <PublicShell><PublicHero eyebrow="Hearing facilities" title="Purpose-built spaces for effective hearings" description="Private rooms, hybrid technology, and Secretariat support for domestic and international matters."/><section className="mx-auto max-w-7xl px-4 py-16 md:px-8"><div className="grid gap-5 md:grid-cols-3">{facilities.map(f=><Card key={f.id}><CardHeader><CardTitle className="font-serif">{f.name}</CardTitle></CardHeader><CardContent className="flex flex-col gap-4"><p className="text-sm leading-relaxed text-muted-foreground">{f.description}</p><p className="text-sm">Capacity: {f.capacity??"On request"} · ₹{f.indicativeRate?.toString()??"On request"}</p></CardContent></Card>)}</div><Button className="mt-8" render={<Link href="/facilities/book"/>}>Request a booking</Button></section></PublicShell>}

@@ -1,0 +1,415 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  ADMIN
+  ARBITRATOR
+  PARTY
+}
+enum Specialization {
+  COMMERCIAL
+  BANKING
+  FINANCIAL
+  INFRASTRUCTURE
+  LOAN_RECOVERY
+  OTHER
+}
+enum EmpanelmentStatus {
+  PENDING
+  APPROVED
+  EXPIRED
+  SUSPENDED
+}
+enum EmpanelmentStage {
+  APPLIED
+  DOCUMENT_VERIFIED
+  INTERVIEW_SCHEDULED
+  APPROVED
+  REJECTED
+}
+enum ReferringEntityType {
+  BANK
+  NBFC
+  LAW_FIRM
+  ADVOCATE
+  INDIVIDUAL
+  OTHER
+}
+enum ReferralStatus {
+  NEW
+  UNDER_REVIEW
+  CONVERTED
+  CLOSED
+}
+enum CaseStatus {
+  DRAFT
+  FILED
+  UNDER_REVIEW
+  ARBITRATOR_ASSIGNED
+  IN_HEARING
+  AWARD_PASSED
+  CLOSED
+}
+enum ArbitratorRole {
+  SOLE
+  PRESIDING
+  CLAIMANT_NOMINEE
+  RESPONDENT_NOMINEE
+  EMERGENCY_ARBITRATOR
+}
+enum CaseDocumentType {
+  FILING
+  EVIDENCE
+  ORDER
+  AWARD
+  OTHER
+}
+enum FacilityType {
+  ARBITRATION_ROOM
+  CONFERENCE_ROOM
+  EVENT_SPACE
+  MEETING_HALL
+  FLOOR
+}
+enum BookingType {
+  PHYSICAL_ROOM
+  VIRTUAL_HEARING
+  HYBRID
+}
+enum BookingSource {
+  ADMIN
+  CASE_LINKED
+  EXTERNAL_PUBLIC
+}
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REJECTED
+}
+enum FeeCategory {
+  ADMINISTRATIVE
+  FILING
+  ARBITRATOR
+  ROOM_RENTAL
+  REGISTRATION
+  ANNUAL_RENEWAL
+  MEMBERSHIP
+}
+enum PaymentStatus {
+  UNPAID
+  PAID
+  WAIVED
+}
+enum ResourceCategory {
+  MANUAL
+  BROCHURE
+  FEE_SCHEDULE
+  RULES
+  RFI_RESPONSE
+  OTHER
+}
+
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  passwordHash String
+  name String
+  phone String?
+  role Role
+  isActive Boolean @default(true)
+  setupTokenHash String?
+  setupTokenExpiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  arbitratorProfile ArbitratorProfile?
+  casesFiled Case[] @relation("CasesFiledByParty")
+  documentsUploaded CaseDocument[] @relation("DocumentUploadedBy")
+  statusChangesMade CaseStatusHistory[] @relation("StatusChangedBy")
+  bookingsHandled FacilityBooking[] @relation("BookingRecordedBy")
+  feePaymentsRecorded FeePayment[] @relation("FeePaymentRecordedBy")
+  resourcesUploaded Resource[] @relation("ResourceUploadedBy")
+  contentEdited ContentBlock[] @relation("ContentUpdatedBy")
+  @@index([role])
+}
+
+model ArbitratorProfile {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id])
+  slug String @unique
+  title String?
+  bio String @db.Text
+  externalProfileUrl String?
+  isProminent Boolean @default(false)
+  photoBase64 String? @db.LongText
+  empanelmentStatus EmpanelmentStatus @default(PENDING)
+  renewalDueDate DateTime?
+  applicationId String? @unique
+  application EmpanelmentApplication? @relation(fields: [applicationId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  specializations ArbitratorSpecialization[]
+  availabilityBlocks ArbitratorAvailability[]
+  caseAssignments CaseArbitrator[]
+  feePayments FeePayment[]
+  @@index([empanelmentStatus])
+}
+
+model ArbitratorSpecialization {
+  id String @id @default(cuid())
+  arbitratorId String
+  arbitrator ArbitratorProfile @relation(fields: [arbitratorId], references: [id], onDelete: Cascade)
+  specialization Specialization
+  @@unique([arbitratorId, specialization])
+  @@index([specialization])
+}
+
+model ArbitratorAvailability {
+  id String @id @default(cuid())
+  arbitratorId String
+  arbitrator ArbitratorProfile @relation(fields: [arbitratorId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  endDate DateTime
+  note String?
+  createdAt DateTime @default(now())
+  @@index([arbitratorId, startDate, endDate])
+}
+
+model EmpanelmentApplication {
+  id String @id @default(cuid())
+  applicantName String
+  applicantEmail String
+  applicantPhone String
+  professionalBackground String @db.Text
+  proposedSpecializations Json
+  stage EmpanelmentStage @default(APPLIED)
+  interviewScheduledAt DateTime?
+  reviewerNotes String? @db.Text
+  registrationFeePaid Boolean @default(false)
+  registrationFeePaidAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  documents EmpanelmentDocument[]
+  resultingProfile ArbitratorProfile?
+  feePayments FeePayment[]
+  @@index([stage])
+  @@index([applicantEmail])
+}
+
+model EmpanelmentDocument {
+  id String @id @default(cuid())
+  applicationId String
+  application EmpanelmentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fileName String
+  mimeType String
+  contentBase64 String @db.LongText
+  uploadedAt DateTime @default(now())
+  @@index([applicationId])
+}
+
+model DisputeReferral {
+  id String @id @default(cuid())
+  referrerName String
+  referrerEmail String
+  referrerPhone String?
+  entityType ReferringEntityType
+  disputeSummary String @db.Text
+  status ReferralStatus @default(NEW)
+  convertedCaseId String? @unique
+  convertedCase Case? @relation(fields: [convertedCaseId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+}
+
+model Case {
+  id String @id @default(cuid())
+  caseNumber String @unique
+  title String
+  description String @db.Text
+  counterpartyName String?
+  referringEntityType ReferringEntityType
+  claimAmount Decimal @db.Decimal(14, 2)
+  isFastTrack Boolean @default(false)
+  isEmergency Boolean @default(false)
+  status CaseStatus @default(DRAFT)
+  partyId String
+  party User @relation("CasesFiledByParty", fields: [partyId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  referral DisputeReferral?
+  documents CaseDocument[]
+  arbitrators CaseArbitrator[]
+  statusHistory CaseStatusHistory[]
+  bookings FacilityBooking[]
+  feePayments FeePayment[]
+  @@index([status])
+  @@index([referringEntityType])
+  @@index([partyId])
+}
+
+model CaseArbitrator {
+  id String @id @default(cuid())
+  caseId String
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  arbitratorId String
+  arbitrator ArbitratorProfile @relation(fields: [arbitratorId], references: [id])
+  role ArbitratorRole
+  appointedAt DateTime @default(now())
+  @@unique([caseId, arbitratorId])
+  @@index([arbitratorId])
+}
+
+model CaseStatusHistory {
+  id String @id @default(cuid())
+  caseId String
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  status CaseStatus
+  note String? @db.Text
+  changedByUserId String?
+  changedBy User? @relation("StatusChangedBy", fields: [changedByUserId], references: [id])
+  changedAt DateTime @default(now())
+  @@index([caseId, changedAt])
+}
+
+model CaseDocument {
+  id String @id @default(cuid())
+  caseId String
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  fileName String
+  mimeType String
+  contentBase64 String @db.LongText
+  documentType CaseDocumentType
+  uploadedByUserId String
+  uploadedBy User @relation("DocumentUploadedBy", fields: [uploadedByUserId], references: [id])
+  createdAt DateTime @default(now())
+  @@index([caseId, documentType])
+}
+
+model Facility {
+  id String @id @default(cuid())
+  name String
+  type FacilityType
+  floorLabel String?
+  capacity Int?
+  description String? @db.Text
+  indicativeRate Decimal? @db.Decimal(10, 2)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bookings FacilityBooking[]
+  @@index([type, isActive])
+}
+
+model FacilityBooking {
+  id String @id @default(cuid())
+  caseId String?
+  case Case? @relation(fields: [caseId], references: [id])
+  facilityId String
+  facility Facility @relation(fields: [facilityId], references: [id])
+  bookingType BookingType
+  startTime DateTime
+  endTime DateTime
+  virtualMeetingUrl String?
+  secretarialAssistanceRequired Boolean @default(false)
+  assignedStaffName String?
+  source BookingSource
+  isPriority Boolean @default(false)
+  status BookingStatus @default(PENDING)
+  requesterName String
+  requesterEmail String
+  requesterPhone String?
+  recordedByUserId String?
+  recordedBy User? @relation("BookingRecordedBy", fields: [recordedByUserId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([facilityId, startTime, endTime])
+  @@index([status])
+  @@index([caseId])
+}
+
+model FeeSchedule {
+  id String @id @default(cuid())
+  category FeeCategory
+  label String
+  amount Decimal @db.Decimal(10, 2)
+  currency String @default("INR")
+  tier String?
+  effectiveDate DateTime
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  feePayments FeePayment[]
+  @@index([category, isActive])
+}
+
+model FeePayment {
+  id String @id @default(cuid())
+  feeScheduleId String?
+  feeSchedule FeeSchedule? @relation(fields: [feeScheduleId], references: [id])
+  caseId String?
+  case Case? @relation(fields: [caseId], references: [id])
+  empanelmentApplicationId String?
+  empanelmentApplication EmpanelmentApplication? @relation(fields: [empanelmentApplicationId], references: [id])
+  arbitratorProfileId String?
+  arbitratorProfile ArbitratorProfile? @relation(fields: [arbitratorProfileId], references: [id])
+  amount Decimal @db.Decimal(10, 2)
+  currency String @default("INR")
+  status PaymentStatus @default(UNPAID)
+  paidAt DateTime?
+  recordedByUserId String?
+  recordedBy User? @relation("FeePaymentRecordedBy", fields: [recordedByUserId], references: [id])
+  notes String? @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+  @@index([caseId])
+  @@index([empanelmentApplicationId])
+  @@index([arbitratorProfileId])
+}
+
+model ContentBlock {
+  id String @id @default(cuid())
+  key String @unique
+  title String?
+  body String @db.Text
+  updatedByUserId String?
+  updatedBy User? @relation("ContentUpdatedBy", fields: [updatedByUserId], references: [id])
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model Resource {
+  id String @id @default(cuid())
+  title String
+  category ResourceCategory
+  fileName String
+  mimeType String
+  contentBase64 String @db.LongText
+  isPublished Boolean @default(true)
+  uploadedByUserId String?
+  uploadedBy User? @relation("ResourceUploadedBy", fields: [uploadedByUserId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([category, isPublished])
+}
+
+model ModelClauseTemplate {
+  id String @id @default(cuid())
+  disputeType String
+  seat String
+  language String @default("English")
+  isFastTrackVariant Boolean @default(false)
+  clauseText String @db.Text
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([disputeType, isFastTrackVariant, isActive])
+}
