@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { ChevronDown, Scale } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MobileNavigation } from "@/components/public/mobile-navigation"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 type MenuName = "about" | "explore" | "arbitrators" | "resources" | "facilities"
 type Menu = { label: string; eyebrow: string; title: string; description: string; groups: { title: string; links: { label: string; href: string; note: string }[] }[] }
@@ -63,8 +64,8 @@ export function PublicHeader() {
         <nav className="ml-auto hidden items-center gap-6 lg:flex" aria-label="Primary navigation" onMouseEnter={cancelClose}>
           {(Object.entries(menus) as [MenuName, Menu][]).map(([name, item]) => <button key={name} type="button" className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary aria-expanded:text-primary" aria-expanded={activeMenu === name} aria-controls="public-mega-menu" onMouseEnter={(event) => openMenu(name, event.currentTarget)} onFocus={(event) => openMenu(name, event.currentTarget)} onClick={(event) => openMenu(name, event.currentTarget)}>{item.label}<ChevronDown className={`size-3 transition-transform motion-reduce:transition-none ${activeMenu === name ? "rotate-180" : ""}`} /></button>)}
         </nav>
-        <div className="ml-auto hidden items-center gap-2 lg:flex"><Button variant="outline" size="sm" render={<Link href="/login" />}>Portal Login</Button><Button size="sm" render={<Link href="/refer-dispute" />}>Refer a Dispute</Button></div>
-        <div className="ml-auto lg:hidden"><MobileNavigation /></div>
+        <div className="ml-auto hidden items-center gap-2 lg:flex"><ThemeToggle /><Button variant="outline" size="sm" render={<Link href="/login" />}>Portal Login</Button><Button size="sm" render={<Link href="/refer-dispute" />}>Refer a Dispute</Button></div>
+        <div className="ml-auto flex items-center gap-2 lg:hidden"><ThemeToggle /><MobileNavigation /></div>
       </div>
       {menu && <div id="public-mega-menu" className="absolute inset-x-0 top-full border-b border-border bg-card/98 shadow-2xl motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
         <div className="mx-auto max-w-6xl px-8 py-8">
