@@ -2,8 +2,11 @@ import { prisma } from "@/lib/prisma"
 import { referralSchema } from "@/lib/validations"
 import { apiError } from "@/lib/server-utils"
 import { sendMail } from "@/lib/mailer"
+import { rateLimitResponse } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
+  const limited = rateLimitResponse(request, "referral", 10)
+  if (limited) return limited
   try {
     const data = referralSchema.parse(await request.json())
     const referral = await prisma.disputeReferral.create({ data, select: { id: true, status: true } })

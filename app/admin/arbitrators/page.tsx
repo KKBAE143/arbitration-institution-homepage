@@ -1,2 +1,11 @@
-import { AdminWorkspace } from '@/components/portal/admin-workspace'
-export default function Page() { return <AdminWorkspace type="arbitrators" /> }
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { requireRole } from "@/lib/authorization"
+import { prisma } from "@/lib/prisma"
+
+export default async function Page() {
+  await requireRole("ADMIN")
+  const panel = await prisma.arbitratorProfile.findMany({ include: { user: { select: { name: true, email: true, isActive: true } }, specializations: true, _count: { select: { caseAssignments: true, availabilityBlocks: true } } }, orderBy: [{ isProminent: "desc" }, { user: { name: "asc" } }] })
+  return <main className="mx-auto flex max-w-7xl flex-col gap-6 p-4 md:p-8"><header><p className="text-sm text-muted-foreground">Panel directory</p><h1 className="font-serif text-4xl font-semibold">Arbitrators</h1><p className="mt-2 text-muted-foreground">Monitor panel status, expertise, appointments, and availability declarations.</p></header><Card><CardHeader><CardTitle>Panel roster</CardTitle><CardDescription>{panel.filter((item) => item.empanelmentStatus === "APPROVED").length} approved members</CardDescription></CardHeader><CardContent className="overflow-x-auto px-0"><Table><TableHeader><TableRow><TableHead className="pl-6">Member</TableHead><TableHead>Expertise</TableHead><TableHead>Appointments</TableHead><TableHead>Availability blocks</TableHead><TableHead>Renewal</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{panel.map((item) => <TableRow key={item.id}><TableCell className="pl-6"><p className="font-medium">{item.user.name}</p><p className="text-xs text-muted-foreground">{item.user.email}</p></TableCell><TableCell>{item.specializations.map((value) => value.specialization.replaceAll("_", " ")).join(", ") || "General"}</TableCell><TableCell>{item._count.caseAssignments}</TableCell><TableCell>{item._count.availabilityBlocks}</TableCell><TableCell>{item.renewalDueDate?.toLocaleDateString("en-IN") ?? "Not set"}</TableCell><TableCell><Badge variant={item.user.isActive && item.empanelmentStatus === "APPROVED" ? "secondary" : "outline"}>{item.empanelmentStatus}</Badge></TableCell></TableRow>)}</TableBody></Table></CardContent></Card></main>
+}

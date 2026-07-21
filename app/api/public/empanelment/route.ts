@@ -2,8 +2,11 @@ import { prisma } from "@/lib/prisma"
 import { empanelmentSchema } from "@/lib/validations"
 import { assertFileSize, apiError } from "@/lib/server-utils"
 import { sendMail } from "@/lib/mailer"
+import { rateLimitResponse } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
+  const limited = rateLimitResponse(request, "empanelment", 5)
+  if (limited) return limited
   try {
     const data = empanelmentSchema.parse(await request.json())
     data.documents.forEach((file) => assertFileSize(file.contentBase64))

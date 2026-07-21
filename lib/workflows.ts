@@ -10,5 +10,5 @@ const empanelmentTransitions: Record<EmpanelmentStage, EmpanelmentStage[]> = {
 }
 export const canTransitionCase = (from: CaseStatus, to: CaseStatus) => caseTransitions[from].includes(to)
 export const canTransitionEmpanelment = (from: EmpanelmentStage, to: EmpanelmentStage) => empanelmentTransitions[from].includes(to)
-export function decodedBase64Bytes(value: string) { const payload = value.includes(",") ? value.split(",")[1] : value; return Math.floor((payload.length * 3) / 4) }
+export function decodedBase64Bytes(value: string) { const payload = value.includes(",") ? value.slice(value.indexOf(",") + 1) : value; return Buffer.byteLength(payload.replace(/\s/g, ""), "base64") }
 export const MAX_FILE_BYTES = 15 * 1024 * 1024
